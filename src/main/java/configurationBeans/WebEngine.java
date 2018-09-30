@@ -1,41 +1,90 @@
 package configurationBeans;
 
+import org.apache.commons.lang3.ArrayUtils;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.ViewResolver;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.thymeleaf.spring5.ISpringTemplateEngine;
 import org.thymeleaf.spring5.SpringTemplateEngine;
 import org.thymeleaf.spring5.templateresolver.SpringResourceTemplateResolver;
+import org.thymeleaf.spring5.view.ThymeleafViewResolver;
 import org.thymeleaf.templatemode.TemplateMode;
+import org.thymeleaf.templateresolver.ITemplateResolver;
 
 @Configuration
-public class WebEngine {
-    @Bean
-    public SpringResourceTemplateResolver templateResolver() {
-        // SpringResourceTemplateResolver automatically integrates with Spring's own
-        // resource resolution infrastructure, which is highly recommended.
-        SpringResourceTemplateResolver templateResolver = new SpringResourceTemplateResolver();
-        templateResolver.setApplicationContext(this.applicationContext);
-        templateResolver.setPrefix("/WEB-INF/templates/");
-        templateResolver.setSuffix(".html");
-        // HTML is the default value, added here for the sake of clarity.
-        templateResolver.setTemplateMode(TemplateMode.HTML);
-        // Template cache is true by default. Set to false if you want
-        // templates to be automatically updated when modified.
-        templateResolver.setCacheable(true);
-        return templateResolver;
+public class WebEngine implements WebMvcConfigurer, ApplicationContextAware {
+
+    private ApplicationContext applicationContext;
+
+    @Override
+    public void setApplicationContext(ApplicationContext applicationContext) {
+        this.applicationContext = applicationContext;
     }
 
     @Bean
-    public SpringTemplateEngine templateEngine() {
-        // SpringTemplateEngine automatically applies SpringStandardDialect and
-        // enables Spring's own MessageSource message resolution mechanisms.
-        SpringTemplateEngine templateEngine = new SpringTemplateEngine();
-        templateEngine.setTemplateResolver(templateResolver());
-        // Enabling the SpringEL compiler with Spring 4.2.4 or newer can
-        // speed up execution in most scenarios, but might be incompatible
-        // with specific cases when expressions in one template are reused
-        // across different data types, so this flag is "false" by default
-        // for safer backwards compatibility.
-        templateEngine.setEnableSpringELCompiler(true);
-        return templateEngine;
+    public ViewResolver htmlViewResolver() {
+        ThymeleafViewResolver resolver = new ThymeleafViewResolver();
+        resolver.setTemplateEngine(templateEngine(htmlTemplateResolver()));
+        resolver.setContentType("text/html");
+        resolver.setCharacterEncoding("UTF-8");
+        resolver.setViewNames(ArrayUtils.toArray("*.html"));
+        return resolver;
     }
-}
+
+    @Bean
+    public ViewResolver javascriptViewResolver() {
+        ThymeleafViewResolver resolver = new ThymeleafViewResolver();
+        resolver.setTemplateEngine(templateEngine(javascriptTemplateResolver()));
+        resolver.setContentType("application/javascript");
+        resolver.setCharacterEncoding("UTF-8");
+        resolver.setViewNames(ArrayUtils.toArray("*.js"));
+        return resolver;
+    }
+
+    @Bean
+    public ViewResolver plainViewResolver() {
+        ThymeleafViewResolver resolver = new ThymeleafViewResolver();
+        resolver.setTemplateEngine(templateEngine(plainTemplateResolver()));
+        resolver.setContentType("text/plain");
+        resolver.setCharacterEncoding("UTF-8");
+        resolver.setViewNames(ArrayUtils.toArray("*.txt"));
+        return resolver;
+    }
+
+    private ISpringTemplateEngine templateEngine(ITemplateResolver templateResolver) {
+        SpringTemplateEngine engine = new SpringTemplateEngine();
+        engine.setTemplateResolver(templateResolver);
+        return engine;
+    }
+
+    private ITemplateResolver htmlTemplateResolver() {
+        SpringResourceTemplateResolver resolver = new SpringResourceTemplateResolver();
+        resolver.setApplicationContext(applicationContext);
+        resolver.setPrefix("/WEB-INF/views/");
+        resolver.setCacheable(false);
+        resolver.setTemplateMode(TemplateMode.HTML);
+        return resolver;
+    }
+
+    private ITemplateResolver javascriptTemplateResolver() {
+        SpringResourceTemplateResolver resolver = new SpringResourceTemplateResolver();
+        resolver.setApplicationContext(applicationContext);
+        resolver.setPrefix("/WEB-INF/js/");
+        resolver.setCacheable(false);
+        resolver.setTemplateMode(TemplateMode.JAVASCRIPT);
+        return resolver;
+    }
+
+    private ITemplateResolver plainTemplateResolver() {
+        SpringResourceTemplateResolver resolver = new SpringResourceTemplateResolver();
+        resolver.setApplicationContext(applicationContext);
+        resolver.setPrefix("/WEB-INF/txt/");
+        resolver.setCacheable(false);
+        resolver.setTemplateMode(TemplateMode.TEXT);
+        return resolver;
+    }
+    }
+
